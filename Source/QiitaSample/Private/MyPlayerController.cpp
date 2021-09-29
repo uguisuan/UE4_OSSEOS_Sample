@@ -14,8 +14,9 @@ const FName SESSION_NAME = "SessionName";
 
 TSharedPtr<class FOnlineSessionSearch> SearchSettings;
 
-void AMyPlayerController::Login()
+FString AMyPlayerController::Login()
 {
+
 	IOnlineSubsystem* OnlineSub = Online::GetSubsystem(GetWorld());
 	if (OnlineSub)
 	{
@@ -32,13 +33,18 @@ void AMyPlayerController::Login()
 
 					Identity->AddOnLoginCompleteDelegate_Handle(ControllerId, FOnLoginCompleteDelegate::CreateUObject(this, &AMyPlayerController::OnLoginCompleteDelegate));
 					Identity->AutoLogin(ControllerId);
+
 				}
+
 				ELoginStatus::Type status = Identity->GetLoginStatus(ControllerId);
 				DISPLAY_LOG("Login Status: %s", ELoginStatus::ToString(status));
+
+				
 			}
 		}
 	}
-	PlayerState;
+
+	return "";
 }
 
 bool AMyPlayerController::HostSession()
@@ -116,14 +122,24 @@ void AMyPlayerController::OnFindSessionsCompleteDelegate(bool bWasSuccessful) {
 			DISPLAY_LOG("No session found.");
 		}
 		else {
-			const TCHAR* SessionId = *SearchSettings->SearchResults[0].GetSessionIdStr();
-			// DISPLAY_LOG("Session ID: %s", SessionId);
 			JoinSession(SearchSettings->SearchResults[0]);
 		}
 	}
 	else {
 		DISPLAY_LOG("Find Session: Fail");
 	}
+}
+
+void AMyPlayerController::OnSessionInviteReceivedDelegate(const FUniqueNetId& UserId, const FUniqueNetId& FromId, const FString& AppId, const FOnlineSessionSearchResult& InviteResult)
+{
+	const TCHAR* ToUserId = *UserId.ToString();
+	const TCHAR* FromUserId = *FromId.ToString();
+	DISPLAY_LOG("Received Invite from %s to %s", ToUserId, FromUserId);
+}
+
+void AMyPlayerController::OnReadFriendsCompleteDelegate(int32 LocalUserNum, bool bWasSuccessful, const FString& ListName, const FString& ErrorStr)
+{
+	DISPLAY_LOG("FRIEND_LIST RETRIEVED");
 }
 
 void AMyPlayerController::JoinSession(FOnlineSessionSearchResult SearchResult) {
@@ -194,6 +210,38 @@ void AMyPlayerController::OnLoginCompleteDelegate(int32 LocalUserNum, bool bWasS
 			FUniqueNetIdRepl uniqueId = PlayerState->GetUniqueId();
 			uniqueId.SetUniqueNetId(FUniqueNetIdWrapper(UserId).GetUniqueNetId());
 			PlayerState->SetUniqueId(uniqueId);
+		}
+	}
+
+	IOnlineSessionPtr Session = Online::GetSessionInterface();
+	if (Session.IsValid())
+	{
+		Session->AddOnSessionInviteReceivedDelegate_Handle(FOnSessionInviteReceivedDelegate::CreateUObject(this, &AMyPlayerController::OnSessionInviteReceivedDelegate));
+	}
+
+	IOnlineFriendsPtr Friends = Online::GetFriendsInterface();
+	if (Friends.IsValid())
+	{
+		Friends->ReadFriendsList(0, SESSION_NAME.ToString(), FOnReadFriendsListComplete::CreateUObject(this, &AMyPlayerController::OnReadFriendsCompleteDelegate));
+	}
+}
+
+void AMyPlayerController::SendInvitation()
+{
+	IOnlineSubsystem* const OnlineSub = Online::GetSubsystem(GetWorld());
+	if (OnlineSub)
+	{
+		IOnlineFriendsPtr Friends = OnlineSub->GetFriendsInterface();
+		IOnlineSessionPtr Sessions = OnlineSub->GetSessionInterface();
+		if (Sessions.IsValid() && Friends.IsValid())
+		{
+			TArray<TSharedRef<FOnlineFriend>> FriendList;
+			Friends->GetFriendsList(0,SESSION_NAME.ToString(), FriendList);
+			for (TSharedRef<FOnlineFriend> Friend : FriendList)
+			{
+				FUniqueNetIdRef FriendUniqueNetIdRef = Friend->GetUserId();
+				Sessions->SendSessionInviteToFriend(0, SESSION_NAME, FriendUniqueNetIdRef.Get());
+			}
 		}
 	}
 }
