@@ -37,6 +37,6 @@ private:
 	void OnJoinSessionCompleteDelegate(FName SessionName, EOnJoinSessionCompleteResult::Type Result);
 	void OnCreateSessionCompleteDelegate(FName InSessionName, bool bWasSuccessful);
 	void OnFindSessionsCompleteDelegate(bool bWasSuccessful);
-	void OnSessionInviteReceivedDelegate(const FUniqueNetId& UserId, const FUniqueNetId& FromId, const FString& AppId, const FOnlineSessionSearchResult& InviteResult);
+	void OnSessionUserInviteAcceptedDelegate(const bool bWasSuccessful, const int32 ControllerId, FUniqueNetIdPtr UserId, const FOnlineSessionSearchResult& InviteResult);
 	void OnReadFriendsCompleteDelegate(int32 LocalUserNum, bool bWasSuccessful, const FString& ListName, const FString& ErrorStr);
 };

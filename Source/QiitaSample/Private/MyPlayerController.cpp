@@ -130,11 +130,14 @@ void AMyPlayerController::OnFindSessionsCompleteDelegate(bool bWasSuccessful) {
 	}
 }
 
-void AMyPlayerController::OnSessionInviteReceivedDelegate(const FUniqueNetId& UserId, const FUniqueNetId& FromId, const FString& AppId, const FOnlineSessionSearchResult& InviteResult)
+void AMyPlayerController::OnSessionUserInviteAcceptedDelegate(const bool bWasSuccessful, const int32 ControllerId, FUniqueNetIdPtr UserId, const FOnlineSessionSearchResult& InviteResult)
 {
-	const TCHAR* ToUserId = *UserId.ToString();
-	const TCHAR* FromUserId = *FromId.ToString();
-	DISPLAY_LOG("Received Invite from %s to %s", ToUserId, FromUserId);
+	if (bWasSuccessful) {
+		JoinSession(InviteResult);
+	}
+	else {
+		DISPLAY_LOG("invite Accepted : Fail");
+	}
 }
 
 void AMyPlayerController::OnReadFriendsCompleteDelegate(int32 LocalUserNum, bool bWasSuccessful, const FString& ListName, const FString& ErrorStr)
@@ -216,7 +219,7 @@ void AMyPlayerController::OnLoginCompleteDelegate(int32 LocalUserNum, bool bWasS
 	IOnlineSessionPtr Session = Online::GetSessionInterface();
 	if (Session.IsValid())
 	{
-		Session->AddOnSessionInviteReceivedDelegate_Handle(FOnSessionInviteReceivedDelegate::CreateUObject(this, &AMyPlayerController::OnSessionInviteReceivedDelegate));
+		Session->AddOnSessionUserInviteAcceptedDelegate_Handle(FOnSessionUserInviteAcceptedDelegate::CreateUObject(this, &AMyPlayerController::OnSessionUserInviteAcceptedDelegate));
 	}
 
 	IOnlineFriendsPtr Friends = Online::GetFriendsInterface();
